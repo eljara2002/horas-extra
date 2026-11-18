@@ -130,6 +130,21 @@ function nowM(){var d=new Date();return d.getHours()*60+d.getMinutes()}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function fLargo(s){var d=pd(s);return DOW[d.getDay()]+" "+d.getDate()+" de "+MES[d.getMonth()]}
 function fCorto(s){var d=pd(s);return DOWC[d.getDay()]+" "+String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")}
+/* Acepta 18:42, 18.42, 18h42, 1842 y 842; devuelve minutos o null */
+function parseHora(s){
+  if(!s)return null;
+  try{s=decodeURIComponent(String(s))}catch(e){s=String(s)}
+  s=s.trim();
+  var m=s.match(/^(\d{1,2})\s*[:.,hH\-]\s*(\d{1,2})$/);
+  if(!m){
+    var d=s.match(/^(\d{3,4})$/);
+    if(d)m=[0,d[1].slice(0,d[1].length-2),d[1].slice(-2)];
+  }
+  if(!m)return null;
+  var h=Number(m[1]),mi=Number(m[2]);
+  if(!(h>=0&&h<=23&&mi>=0&&mi<=59))return null;
+  return h*60+mi;
+}
 
 /* ---------- festivos de Portugal ---------- */
 function pascua(y){
@@ -397,7 +412,20 @@ function vAuto(){
   document.getElementById("v-auto").innerHTML=
   '<div class="card"><h2>Marcar sin tocar el móvil</h2><div class="mut" style="margin:6px 0 10px">La app acepta estas direcciones. Abrir una ya guarda la hora; después puedes añadir el motivo si quieres.</div>'+
   filas.map(function(x){return '<div style="padding:9px 0;border-bottom:1px solid var(--line)"><div style="font-weight:600">'+x[1]+'</div><code>'+esc(u(x[0]))+'</code> <button class="sm" data-a="copiaurl" data-u="'+esc(u(x[0]))+'" style="margin-top:6px">Copiar</button></div>'}).join("")+
-  '<div class="mut" style="margin-top:10px">Llevan la acción dos veces (en <code>?accion=</code> y en <code>#</code>) para que funcione tanto en un servidor propio como en una página alojada que descarta la parte de la izquierda.</div></div>'+
+  '<div class="mut" style="margin-top:10px">Llevan la acción dos veces (en <code>?accion=</code> y en <code>#</code>) para que funcione tanto en un servidor propio como en una página alojada que descarta la parte de la izquierda. Si no dices la hora, se guarda la del momento en que se abre la página.</div></div>'+
+  '<div class="card"><h2>Que no se desfase la hora</h2>'+
+  '<div class="mut" style="margin:6px 0 10px">Si el móvil está bloqueado, la automatización puede tardar unos minutos en arrancar y entonces se guardaría esa hora, no la real. Para evitarlo, añade <code>&amp;hora=</code> y que la mande el propio atajo:</div>'+
+  '<code>'+esc(base+"?accion=termine&hora=18:42")+'</code>'+
+  '<div style="margin-top:12px"><b>iPhone · Atajos</b><ol class="pasos">'+
+  '<li>En la automatización, antes de Abrir URL, añade la acción <b>Fecha</b> (devuelve la fecha y hora actuales).</li>'+
+  '<li>Añade <b>Formatear fecha</b>: formato de fecha <b>Ninguno</b>, formato de hora <b>Personalizado</b> y escribe <code>HH:mm</code>.</li>'+
+  '<li>En <b>Abrir URL</b>, escribe la dirección terminada en <code>&amp;hora=</code> e inserta ahí la variable <i>Fecha formateada</i>.</li>'+
+  '</ol></div>'+
+  '<div style="margin-top:12px"><b>Android · MacroDroid</b><ol class="pasos">'+
+  '<li>En la acción Abrir sitio web, termina la dirección en <code>&amp;hora=</code>.</li>'+
+  '<li>Pulsa el botón de <b>texto mágico</b> e inserta la hora y el minuto del sistema, separados por dos puntos.</li>'+
+  '</ol></div>'+
+  '<div class="mut" style="margin-top:8px">Acepta <code>18:42</code>, <code>18.42</code>, <code>18h42</code> y <code>1842</code>. Si la hora no se entiende o falta, usa la del momento.</div></div>'+
   '<div class="card"><h2>iPhone · Atajos</h2><ol class="pasos">'+
   '<li>Abre <b>Atajos</b> → pestaña <b>Automatización</b> → <b>+</b>.</li>'+
   '<li>Elige <b>Lugar</b>, pon la dirección de la empresa y marca <b>Al salir</b>.</li>'+
@@ -599,25 +627,30 @@ document.addEventListener("click",function(e){
 /* ---------- arranque y acciones por URL ---------- */
 cargar();
 (function(){
-  var acc="";
-  try{acc=new URLSearchParams(location.search).get("accion")||""}catch(e){}
+  var acc="",qh=null;
+  try{
+    var qs=new URLSearchParams(location.search);
+    acc=qs.get("accion")||"";
+    qh=parseHora(qs.get("hora"));
+  }catch(e){}
   if(!acc&&location.hash)acc=location.hash.replace("#","");
-  var hoy=fd(new Date()),t=tipoDe(hoy),r;
+  var hoy=fd(new Date()),t=tipoDe(hoy),r,
+      hora=m2hm(qh==null?nowM():qh);
   ir("hoy");
   if(acc==="termine"){
     if(t.tipo==="laborable"){
-      guardarTermine(hoy,m2hm(nowM()),null);
+      guardarTermine(hoy,hora,null);
       pintar();
       dlgTermine(hoy,S.dias[hoy].salidaReal,true);
     }else{
       r=recOf(hoy);r.tipo=t.tipo;
-      if(!r.entrada)set(r,"entrada",m2hm(nowM()));else set(r,"salida",m2hm(nowM()));
+      if(!r.entrada)set(r,"entrada",hora);else set(r,"salida",hora);
       r.estado=r.salida?"ok":"pendiente";guardar();pintar();
     }
   }else if(acc==="entrada"){
-    r=recOf(hoy);r.tipo=t.tipo;set(r,"entrada",m2hm(nowM()));r.estado="pendiente";guardar();pintar();
+    r=recOf(hoy);r.tipo=t.tipo;set(r,"entrada",hora);r.estado="pendiente";guardar();pintar();
   }else if(acc==="salida"){
-    r=recOf(hoy);r.tipo=t.tipo;set(r,"salida",m2hm(nowM()));r.estado=r.entrada?"ok":"pendiente";guardar();pintar();
+    r=recOf(hoy);r.tipo=t.tipo;set(r,"salida",hora);r.estado=r.entrada?"ok":"pendiente";guardar();pintar();
   }
   var nm=hm2m(S.cfg.notif);
   if(nm!=null&&nowM()<nm&&t.tipo==="laborable"){

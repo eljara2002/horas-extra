@@ -20,7 +20,7 @@ App de una sola página para registrar horas extra sobre la hora normal de salid
 | Entrada en descanso o festivo | `https://eljara2002.github.io/horas-extra/?accion=entrada` |
 | Salida en descanso o festivo | `https://eljara2002.github.io/horas-extra/?accion=salida` |
 
-Abrir una de ellas guarda la hora en ese momento. En iPhone se usan con Atajos (automatización de Lugar → Al salir → Abrir URL) y en Android con MacroDroid (geovalla → Abrir sitio web). Los pasos están en la pestaña **Automatizar** de la app.
+Abrir una de ellas guarda la hora en ese momento. Para que no se desfase si el móvil está bloqueado, se le puede pasar la hora exacta: `?accion=termine&hora=18:42` (acepta `18:42`, `18.42`, `18h42` y `1842`; si falta o no se entiende, usa la del momento). En iPhone se usan con Atajos (automatización de Lugar → Al salir → Abrir URL) y en Android con MacroDroid (geovalla → Abrir sitio web). Los pasos están en la pestaña **Automatizar** de la app.
 
 ## Datos
 
